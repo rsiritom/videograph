@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Bar Graph</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            padding-left: 20px;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .bar-container {
+            width: 80%;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .country-name {
+            width: 100px;
+            flex-shrink: 0;
+            font-weight: bold;
+        }
+
+        .bar {
+            height: 30px;
+            background-color: #3498db;
+            transition: width 0.3s;
+            position: relative;
+            min-width: 5px;
+        }
+
+        .value {
+            position: absolute;
+            left: 105%; /* Position value just to the right of the bar */
+            white-space: nowrap;
+        }
+
+        .year {
+            margin-top: 20px;
+            font-size: 24px;
+        }
+    </style>
+</head>
+
+<body>
+    <input type="file" id="fileInput" accept=".csv">
+    <div id="chart"></div>
+    <div class="year" id="year">Year: 2000</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script>
+        let data = {};
+        let currentYear = 2000;
+        let interval;
+
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    header: true,
+                    complete: function (results) {
+                        processData(results.data);
+                    }
+                });
+            }
+        }
+
+        function processData(parsedData) {
+            data = parsedData.reduce((acc, row) => {
+                if (!acc[row.Year]) {
+                    acc[row.Year] = [];
+                }
+                acc[row.Year].push(row);
+                return acc;
+            }, {});
+
+            currentYear = Object.keys(data)[0];
+            if (interval) clearInterval(interval);
+            interval = setInterval(updateBars, 1500);
+            updateBars();
+        }
+
+        function updateBars() {
+            const yearData = data[currentYear];
+            const chart = document.getElementById('chart');
+            chart.innerHTML = '';
+
+            // Find the maximum value in the current year's data to scale bars
+            const maxValue = Math.max(...yearData.map(row => parseFloat(row.Value)));
+
+            // Get the max width as 80% of the viewport width
+            const maxBarWidth = window.innerWidth * 0.8;
+
+            // Sort data by value, descending order
+            const sortedData = yearData.sort((a, b) => parseFloat(b.Value) - parseFloat(a.Value));
+
+            sortedData.forEach((row) => {
+                const barContainer = document.createElement('div');
+                barContainer.className = 'bar-container';
+
+                const countryName = document.createElement('div');
+                countryName.className = 'country-name';
+                countryName.textContent = row.Country;
+
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+
+                // Calculate the bar width based on max value and the dynamic maxBarWidth
+                const valuePercentage = parseFloat(row.Value);
+                const width = (valuePercentage / maxValue) * maxBarWidth;
+                bar.style.width = `${width}px`;
+
+                const value = document.createElement('span');
+                value.className = 'value';
+                value.textContent = `${valuePercentage}`;
+
+                bar.appendChild(value);
+                barContainer.appendChild(countryName);
+                barContainer.appendChild(bar);
+                chart.appendChild(barContainer);
+            });
+
+            document.getElementById('year').textContent = `Year: ${currentYear}`;
+
+            const years = Object.keys(data).sort();
+            const currentIndex = years.indexOf(currentYear);
+            currentYear = years[(currentIndex + 1) % years.length];
+        }
+    </script>
+</body>
+
+</html>
