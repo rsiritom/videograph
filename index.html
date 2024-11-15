@@ -41,13 +41,29 @@
 
         .value {
             position: absolute;
-            left: 105%; /* Position value just to the right of the bar */
+            left: 105%;
             white-space: nowrap;
         }
 
         .year {
             margin-top: 20px;
             font-size: 24px;
+        }
+
+        table {
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+
+        input {
+            width: 60px;
+            text-align: right;
         }
     </style>
 </head>
@@ -57,13 +73,29 @@
     <div id="chart"></div>
     <div class="year" id="year">Year: 2000</div>
 
+    <table id="inputTable">
+        <thead>
+            <tr id="tableHeader">
+                <th>Country</th>
+                <!-- Las columnas de año se agregarán dinámicamente -->
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Las filas se agregarán dinámicamente -->
+        </tbody>
+    </table>
+    <button id="playGraph">Play Graph</button>
+    <button id="stopGraph">Stop</button>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script>
         let data = {};
-        let currentYear = 2000;
+        let currentYear = '2000';
         let interval;
 
         document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
+        document.getElementById('playGraph').addEventListener('click', playGraph, false);
+        document.getElementById('stopGraph').addEventListener('click', stopGraph, false);
 
         function handleFileSelect(event) {
             const file = event.target.files[0];
@@ -78,35 +110,77 @@
         }
 
         function processData(parsedData) {
-            data = parsedData.reduce((acc, row) => {
-                if (!acc[row.Year]) {
-                    acc[row.Year] = [];
-                }
-                acc[row.Year].push(row);
-                return acc;
-            }, {});
+            // Limpiar la tabla existente
+            const tableBody = document.querySelector('#inputTable tbody');
+            const tableHeader = document.querySelector('#tableHeader');
+            tableBody.innerHTML = '';
+            tableHeader.innerHTML = '<th>Country</th>'; // Reiniciar encabezados
 
-            currentYear = Object.keys(data)[0];
-            if (interval) clearInterval(interval);
-            interval = setInterval(updateBars, 1500);
+            // Obtener los años únicos y países
+            const years = new Set();
+            const countries = new Set();
+
+            parsedData.forEach(row => {
+                countries.add(row.Country);
+                years.add(row.Year);
+            });
+
+            // Agregar encabezados de año a la tabla
+            years.forEach(year => {
+                const th = document.createElement('th');
+                th.textContent = year;
+                tableHeader.appendChild(th);
+            });
+
+            // Agregar filas para cada país
+            countries.forEach(country => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${country}</td>`;
+                
+                years.forEach(year => {
+                    const inputValue = parsedData.find(row => row.Country === country && row.Year === year)?.Value || 0;
+                    row.innerHTML += `<td><input type="number" value="${inputValue}" id="${country}-${year}"></td>`;
+                });
+
+                tableBody.appendChild(row);
+            });
+
+            currentYear = [...years][0]; // Reiniciar al primer año
+        }
+
+        function playGraph() {
+            clearInterval(interval);
+            currentYear = currentYear || '2000'; // Asegurarse de tener un año
             updateBars();
+            interval = setInterval(updateBars, 1500);
+        }
+
+        function stopGraph() {
+            clearInterval(interval);
         }
 
         function updateBars() {
-            const yearData = data[currentYear];
             const chart = document.getElementById('chart');
             chart.innerHTML = '';
 
-            // Find the maximum value in the current year's data to scale bars
-            const maxValue = Math.max(...yearData.map(row => parseFloat(row.Value)));
+            // Obtener los valores ingresados por el usuario
+            const countries = Array.from(document.querySelectorAll('#inputTable tbody tr')).map(row => row.cells[0].textContent);
+            const yearValues = countries.map(country => {
+                return {
+                    Country: country,
+                    Value: parseFloat(document.getElementById(`${country}-${currentYear}`).value) || 0
+                };
+            });
 
-            // Get the max width as 80% of the viewport width
-            const maxBarWidth = window.innerWidth * 0.8;
+            // Establecer el ancho máximo de la barra al 50% del ancho de la pantalla
+            const maxBarWidth = window.innerWidth * 0.5;
 
-            // Sort data by value, descending order
-            const sortedData = yearData.sort((a, b) => parseFloat(b.Value) - parseFloat(a.Value));
+            // Encontrar el valor máximo para escalar las barras
+            const maxValue = Math.max(...yearValues.map(row => row.Value)) || 1;
 
-            sortedData.forEach((row) => {
+            yearValues.sort((a, b) => b.Value - a.Value);
+
+            yearValues.forEach((row) => {
                 const barContainer = document.createElement('div');
                 barContainer.className = 'bar-container';
 
@@ -117,8 +191,7 @@
                 const bar = document.createElement('div');
                 bar.className = 'bar';
 
-                // Calculate the bar width based on max value and the dynamic maxBarWidth
-                const valuePercentage = parseFloat(row.Value);
+                const valuePercentage = row.Value;
                 const width = (valuePercentage / maxValue) * maxBarWidth;
                 bar.style.width = `${width}px`;
 
@@ -134,7 +207,7 @@
 
             document.getElementById('year').textContent = `Year: ${currentYear}`;
 
-            const years = Object.keys(data).sort();
+            const years = Array.from(document.querySelectorAll('#tableHeader th')).slice(1).map(th => th.textContent);
             const currentIndex = years.indexOf(currentYear);
             currentYear = years[(currentIndex + 1) % years.length];
         }
