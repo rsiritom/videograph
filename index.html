@@ -181,8 +181,7 @@
 
         function playGraph() {
             clearInterval(interval);
-            currentYear = currentYear || '2000'; // Asegurarse de tener un año
-            updateBars();
+            updateBars(); // Mostrar las barras al inicio
             interval = setInterval(updateBars, 1500);
         }
 
@@ -196,22 +195,25 @@
 
             // Obtener los valores ingresados por el usuario
             const countries = Array.from(document.querySelectorAll('#inputTable tbody tr')).map(row => row.cells[0].textContent);
+
             const yearValues = countries.map((country, index) => {
+                const value = parseFloat(document.getElementById(`${country}-${currentYear}`)?.value) || 0;
                 return {
                     Country: country,
-                    Value: parseFloat(document.getElementById(`${country}-${currentYear}`).value) || 0,
+                    Value: value,
                     Color: colors[index % colors.length], // Asignar color basado en el índice
                     FlagURL: `https://flagcdn.com/w320/${countryToFlag[country]}.png` // URL de la bandera
                 };
-            });
+            }).filter(row => row.Value > 0); // Filtrar solo aquellos con valor válido
+
+            // Ordenar los valores de mayor a menor
+            yearValues.sort((a, b) => b.Value - a.Value);
 
             // Establecer el ancho máximo de la barra al 50% del ancho de la pantalla
             const maxBarWidth = window.innerWidth * 0.5;
 
             // Encontrar el valor máximo para escalar las barras
             const maxValue = Math.max(...yearValues.map(row => row.Value)) || 1;
-
-            yearValues.sort((a, b) => b.Value - a.Value);
 
             yearValues.forEach((row) => {
                 const barContainer = document.createElement('div');
@@ -232,13 +234,12 @@
                 bar.className = 'bar';
                 bar.style.backgroundColor = row.Color; // Asignar color a la barra
 
-                const valuePercentage = row.Value;
-                const width = (valuePercentage / maxValue) * maxBarWidth;
+                const width = (row.Value / maxValue) * maxBarWidth;
                 bar.style.width = `${width}px`;
 
                 const value = document.createElement('span');
                 value.className = 'value';
-                value.textContent = `${valuePercentage}`;
+                value.textContent = `${row.Value}`;
 
                 bar.appendChild(value);
                 barContainer.appendChild(countryName);
