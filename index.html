@@ -163,7 +163,7 @@
 
         function updateBars() {
             const chart = document.getElementById('chart');
-            chart.innerHTML = ''; // Limpiar el gráfico para el nuevo año
+            chart.innerHTML = '';
 
             const countries = Array.from(document.querySelectorAll('#inputTable tbody tr')).map(row => row.cells[0].textContent);
             const yearValues = countries.map((country, index) => {
@@ -182,13 +182,9 @@
 
             yearValues.sort((a, b) => b.ValueNext - a.ValueNext);
 
-            const maxBarWidth = window.innerWidth * 0.5;
+            const maxBarWidth = 300; // Ancho fijo para la barra con el valor máximo
+            const maxValueNext = Math.max(...yearValues.map(r => r.ValueNext));
 
-            let step = 0;
-            const steps = 15; // 15 intervalos
-            const intervalTime = 100; // 100 ms
-
-            // Crear las barras inicialmente
             yearValues.forEach(row => {
                 const barContainer = document.createElement('div');
                 barContainer.className = 'bar-container';
@@ -207,8 +203,9 @@
                 bar.className = 'bar';
                 bar.style.backgroundColor = row.Color;
 
-                const initialWidth = (row.ValueCurrent / Math.max(...yearValues.map(r => r.ValueNext))) * maxBarWidth;
-                bar.style.width = `${initialWidth}px`;
+                // Asignar ancho fijo solo a la barra del valor máximo
+                const barWidth = (row.ValueNext === maxValueNext) ? maxBarWidth : (row.ValueNext / maxValueNext) * (maxBarWidth - 50);
+                bar.style.width = `${barWidth}px`;
 
                 const value = document.createElement('span');
                 value.className = 'value';
@@ -218,25 +215,11 @@
                 barContainer.appendChild(countryName);
                 barContainer.appendChild(bar);
                 chart.appendChild(barContainer);
-                row.BarElement = bar; // Guarda la referencia de la barra
+                row.BarElement = bar;
             });
 
-            const intervalUpdate = setInterval(() => {
-                step++;
-                yearValues.forEach(row => {
-                    const widthCurrent = (row.ValueCurrent / Math.max(...yearValues.map(r => r.ValueNext))) * maxBarWidth;
-                    const widthNext = (row.ValueNext / Math.max(...yearValues.map(r => r.ValueNext))) * maxBarWidth;
-                    const newWidth = widthCurrent + ((widthNext - widthCurrent) / steps) * step;
-
-                    row.BarElement.style.width = `${newWidth}px`; // Actualiza el ancho de la barra
-                });
-
-                if (step >= steps) {
-                    clearInterval(intervalUpdate);
-                    currentYear = getNextYear(currentYear); // Avanzar al siguiente año
-                    document.getElementById('year').textContent = `Year: ${currentYear}`;
-                }
-            }, intervalTime);
+            currentYear = getNextYear(currentYear);
+            document.getElementById('year').textContent = `Year: ${currentYear}`;
         }
 
         function getNextYear(current) {
