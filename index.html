@@ -182,7 +182,7 @@
 
             yearValues.sort((a, b) => b.ValueNext - a.ValueNext);
 
-            const maxBarWidth = 300; // Ancho fijo para la barra con el valor máximo
+            const maxBarWidth = 600; // Ancho fijo para la barra con el valor máximo
             const maxValueNext = Math.max(...yearValues.map(r => r.ValueNext));
 
             yearValues.forEach(row => {
