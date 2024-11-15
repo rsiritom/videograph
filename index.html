@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,15 +16,13 @@
             background-color: #f0f0f0;
             font-family: Arial, sans-serif;
         }
-
         .bar-container {
             width: 80%;
             margin: 10px 0;
             display: flex;
             align-items: center;
-            margin-bottom: 10px; /* Space between country names and bars */
+            margin-bottom: 10px;
         }
-
         .country-name {
             width: 100px;
             flex-shrink: 0;
@@ -33,73 +30,59 @@
             display: flex;
             align-items: center;
         }
-
         .country-flag {
-            width: 30px; /* Adjust flag size as needed */
+            width: 30px;
             height: auto;
-            margin-right: 10px; /* Space between flag and country name */
+            margin-right: 10px;
         }
-
         .bar {
             height: 30px;
-            transition: width 0.3s;
             position: relative;
             min-width: 5px;
-            margin-left: 20px; /* Increased space between the country name and the bar */
+            margin-left: 20px;
         }
-
         .value {
             position: absolute;
             left: 105%;
             white-space: nowrap;
         }
-
         .chart-container {
             position: relative;
         }
-
         .year {
             position: absolute;
             right: 20px;
-            bottom: 30px; /* Adjust as needed */
+            bottom: 30px;
             font-size: 24px;
         }
-
         table {
             margin: 20px 0;
             border-collapse: collapse;
         }
-
         th, td {
             border: 1px solid #ccc;
             padding: 8px;
             text-align: center;
         }
-
         input {
             width: 60px;
             text-align: right;
         }
     </style>
 </head>
-
 <body>
     <input type="file" id="fileInput" accept=".csv">
     <div class="chart-container">
         <div id="chart"></div>
         <div class="year" id="year">Year: 2000</div>
     </div>
-
     <table id="inputTable">
         <thead>
             <tr id="tableHeader">
                 <th>Country</th>
-                <!-- Las columnas de año se agregarán dinámicamente -->
             </tr>
         </thead>
-        <tbody>
-            <!-- Las filas se agregarán dinámicamente -->
-        </tbody>
+        <tbody></tbody>
     </table>
     <button id="playGraph">Play Graph</button>
     <button id="stopGraph">Stop</button>
@@ -109,11 +92,7 @@
         let data = {};
         let currentYear = '2000';
         let interval;
-
-        // Colores para las barras
         const colors = ['pink', 'violet', 'grey', 'green', 'orange', 'red', 'blue'];
-
-        // Mapa de países a códigos de banderas
         const countryToFlag = {
             'Brazil': 'br',
             'Argentina': 'ar',
@@ -121,7 +100,6 @@
             'Peru': 'pe',
             'Chile': 'cl',
             'Uruguay': 'uy',
-            // Add more countries as needed
         };
 
         document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
@@ -141,13 +119,11 @@
         }
 
         function processData(parsedData) {
-            // Limpiar la tabla existente
             const tableBody = document.querySelector('#inputTable tbody');
             const tableHeader = document.querySelector('#tableHeader');
             tableBody.innerHTML = '';
-            tableHeader.innerHTML = '<th>Country</th>'; // Reiniciar encabezados
+            tableHeader.innerHTML = '<th>Country</th>';
 
-            // Obtener los años únicos y países
             const years = new Set();
             const countries = new Set();
 
@@ -156,32 +132,28 @@
                 years.add(row.Year);
             });
 
-            // Agregar encabezados de año a la tabla
             years.forEach(year => {
                 const th = document.createElement('th');
                 th.textContent = year;
                 tableHeader.appendChild(th);
             });
 
-            // Agregar filas para cada país
             countries.forEach(country => {
                 const row = document.createElement('tr');
                 row.innerHTML = `<td>${country}</td>`;
-                
                 years.forEach(year => {
                     const inputValue = parsedData.find(row => row.Country === country && row.Year === year)?.Value || 0;
                     row.innerHTML += `<td><input type="number" value="${inputValue}" id="${country}-${year}"></td>`;
                 });
-
                 tableBody.appendChild(row);
             });
 
-            currentYear = [...years][0]; // Reiniciar al primer año
+            currentYear = [...years][0];
         }
 
         function playGraph() {
             clearInterval(interval);
-            updateBars(); // Mostrar las barras al inicio
+            updateBars();
             interval = setInterval(updateBars, 1500);
         }
 
@@ -191,70 +163,87 @@
 
         function updateBars() {
             const chart = document.getElementById('chart');
-            chart.innerHTML = '';
+            chart.innerHTML = ''; // Limpiar el gráfico para el nuevo año
 
-            // Obtener los valores ingresados por el usuario
             const countries = Array.from(document.querySelectorAll('#inputTable tbody tr')).map(row => row.cells[0].textContent);
-
             const yearValues = countries.map((country, index) => {
-                const value = parseFloat(document.getElementById(`${country}-${currentYear}`)?.value) || 0;
+                const valueCurrent = parseFloat(document.getElementById(`${country}-${currentYear}`)?.value) || 0;
+                const nextYear = getNextYear(currentYear);
+                const valueNext = parseFloat(document.getElementById(`${country}-${nextYear}`)?.value) || 0;
+
                 return {
                     Country: country,
-                    Value: value,
-                    Color: colors[index % colors.length], // Asignar color basado en el índice
-                    FlagURL: `https://flagcdn.com/w320/${countryToFlag[country]}.png` // URL de la bandera
+                    ValueCurrent: valueCurrent,
+                    ValueNext: valueNext,
+                    Color: colors[index % colors.length],
+                    FlagURL: `https://flagcdn.com/w320/${countryToFlag[country]}.png`
                 };
-            }).filter(row => row.Value > 0); // Filtrar solo aquellos con valor válido
+            }).filter(row => row.ValueNext > 0 || row.ValueCurrent > 0);
 
-            // Ordenar los valores de mayor a menor
-            yearValues.sort((a, b) => b.Value - a.Value);
+            yearValues.sort((a, b) => b.ValueNext - a.ValueNext);
 
-            // Establecer el ancho máximo de la barra al 50% del ancho de la pantalla
             const maxBarWidth = window.innerWidth * 0.5;
 
-            // Encontrar el valor máximo para escalar las barras
-            const maxValue = Math.max(...yearValues.map(row => row.Value)) || 1;
+            let step = 0;
+            const steps = 15; // 15 intervalos
+            const intervalTime = 100; // 100 ms
 
-            yearValues.forEach((row) => {
+            // Crear las barras inicialmente
+            yearValues.forEach(row => {
                 const barContainer = document.createElement('div');
                 barContainer.className = 'bar-container';
 
                 const countryName = document.createElement('div');
                 countryName.className = 'country-name';
 
-                // Crear el elemento de la bandera
                 const flag = document.createElement('img');
                 flag.className = 'country-flag';
-                flag.src = row.FlagURL; // Asignar URL de la bandera
+                flag.src = row.FlagURL;
 
-                countryName.appendChild(flag); // Agregar la bandera al nombre del país
-                countryName.appendChild(document.createTextNode(row.Country)); // Agregar el nombre del país
+                countryName.appendChild(flag);
+                countryName.appendChild(document.createTextNode(row.Country));
 
                 const bar = document.createElement('div');
                 bar.className = 'bar';
-                bar.style.backgroundColor = row.Color; // Asignar color a la barra
+                bar.style.backgroundColor = row.Color;
 
-                const width = (row.Value / maxValue) * maxBarWidth;
-                bar.style.width = `${width}px`;
+                const initialWidth = (row.ValueCurrent / Math.max(...yearValues.map(r => r.ValueNext))) * maxBarWidth;
+                bar.style.width = `${initialWidth}px`;
 
                 const value = document.createElement('span');
                 value.className = 'value';
-                value.textContent = `${row.Value}`;
+                value.textContent = `${row.ValueNext}`;
 
                 bar.appendChild(value);
                 barContainer.appendChild(countryName);
                 barContainer.appendChild(bar);
                 chart.appendChild(barContainer);
+                row.BarElement = bar; // Guarda la referencia de la barra
             });
 
-            // Actualizar el año
-            document.getElementById('year').textContent = `Year: ${currentYear}`;
+            const intervalUpdate = setInterval(() => {
+                step++;
+                yearValues.forEach(row => {
+                    const widthCurrent = (row.ValueCurrent / Math.max(...yearValues.map(r => r.ValueNext))) * maxBarWidth;
+                    const widthNext = (row.ValueNext / Math.max(...yearValues.map(r => r.ValueNext))) * maxBarWidth;
+                    const newWidth = widthCurrent + ((widthNext - widthCurrent) / steps) * step;
 
+                    row.BarElement.style.width = `${newWidth}px`; // Actualiza el ancho de la barra
+                });
+
+                if (step >= steps) {
+                    clearInterval(intervalUpdate);
+                    currentYear = getNextYear(currentYear); // Avanzar al siguiente año
+                    document.getElementById('year').textContent = `Year: ${currentYear}`;
+                }
+            }, intervalTime);
+        }
+
+        function getNextYear(current) {
             const years = Array.from(document.querySelectorAll('#tableHeader th')).slice(1).map(th => th.textContent);
-            const currentIndex = years.indexOf(currentYear);
-            currentYear = years[(currentIndex + 1) % years.length];
+            const currentIndex = years.indexOf(current);
+            return years[(currentIndex + 1) % years.length];
         }
     </script>
 </body>
-
 </html>
