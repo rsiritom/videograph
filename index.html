@@ -23,20 +23,29 @@
             margin: 10px 0;
             display: flex;
             align-items: center;
+            margin-bottom: 10px; /* Space between country names and bars */
         }
 
         .country-name {
             width: 100px;
             flex-shrink: 0;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+
+        .country-flag {
+            width: 30px; /* Adjust flag size as needed */
+            height: auto;
+            margin-right: 10px; /* Space between flag and country name */
         }
 
         .bar {
             height: 30px;
-            background-color: #3498db;
             transition: width 0.3s;
             position: relative;
             min-width: 5px;
+            margin-left: 20px; /* Increased space between the country name and the bar */
         }
 
         .value {
@@ -45,8 +54,14 @@
             white-space: nowrap;
         }
 
+        .chart-container {
+            position: relative;
+        }
+
         .year {
-            margin-top: 20px;
+            position: absolute;
+            right: 20px;
+            bottom: 30px; /* Adjust as needed */
             font-size: 24px;
         }
 
@@ -70,8 +85,10 @@
 
 <body>
     <input type="file" id="fileInput" accept=".csv">
-    <div id="chart"></div>
-    <div class="year" id="year">Year: 2000</div>
+    <div class="chart-container">
+        <div id="chart"></div>
+        <div class="year" id="year">Year: 2000</div>
+    </div>
 
     <table id="inputTable">
         <thead>
@@ -92,6 +109,20 @@
         let data = {};
         let currentYear = '2000';
         let interval;
+
+        // Colores para las barras
+        const colors = ['pink', 'violet', 'grey', 'green', 'orange', 'red', 'blue'];
+
+        // Mapa de países a códigos de banderas
+        const countryToFlag = {
+            'Brazil': 'br',
+            'Argentina': 'ar',
+            'Colombia': 'co',
+            'Peru': 'pe',
+            'Chile': 'cl',
+            'Uruguay': 'uy',
+            // Add more countries as needed
+        };
 
         document.getElementById('fileInput').addEventListener('change', handleFileSelect, false);
         document.getElementById('playGraph').addEventListener('click', playGraph, false);
@@ -165,10 +196,12 @@
 
             // Obtener los valores ingresados por el usuario
             const countries = Array.from(document.querySelectorAll('#inputTable tbody tr')).map(row => row.cells[0].textContent);
-            const yearValues = countries.map(country => {
+            const yearValues = countries.map((country, index) => {
                 return {
                     Country: country,
-                    Value: parseFloat(document.getElementById(`${country}-${currentYear}`).value) || 0
+                    Value: parseFloat(document.getElementById(`${country}-${currentYear}`).value) || 0,
+                    Color: colors[index % colors.length], // Asignar color basado en el índice
+                    FlagURL: `https://flagcdn.com/w320/${countryToFlag[country]}.png` // URL de la bandera
                 };
             });
 
@@ -186,10 +219,18 @@
 
                 const countryName = document.createElement('div');
                 countryName.className = 'country-name';
-                countryName.textContent = row.Country;
+
+                // Crear el elemento de la bandera
+                const flag = document.createElement('img');
+                flag.className = 'country-flag';
+                flag.src = row.FlagURL; // Asignar URL de la bandera
+
+                countryName.appendChild(flag); // Agregar la bandera al nombre del país
+                countryName.appendChild(document.createTextNode(row.Country)); // Agregar el nombre del país
 
                 const bar = document.createElement('div');
                 bar.className = 'bar';
+                bar.style.backgroundColor = row.Color; // Asignar color a la barra
 
                 const valuePercentage = row.Value;
                 const width = (valuePercentage / maxValue) * maxBarWidth;
@@ -205,6 +246,7 @@
                 chart.appendChild(barContainer);
             });
 
+            // Actualizar el año
             document.getElementById('year').textContent = `Year: ${currentYear}`;
 
             const years = Array.from(document.querySelectorAll('#tableHeader th')).slice(1).map(th => th.textContent);
